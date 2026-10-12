@@ -1,5 +1,5 @@
 [project]
-name = "toolshop-playwright-python"
+name = "toolshop"
 version = "0.1.0"
 description = "Learning Playwright (Python) + GitHub Actions against practicesoftwaretesting.com"
 requires-python = ">=3.12"

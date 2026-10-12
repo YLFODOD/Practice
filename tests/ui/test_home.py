@@ -10,7 +10,7 @@ from playwright.sync_api import Page, expect
 def test_home_page_shows_products(page: Page) -> None:
     page.goto("/")  # relative to base_url in pytest.ini
 
-    expect(page).to_have_title(re.compile("Practice Software Testing"))
+    expect(page).to_have_title(re.compile("Something is wrong here"))
     # expect() auto-waits until the Angular app has rendered the grid
     expect(page.get_by_test_id("product-name").first).to_be_visible()
 
