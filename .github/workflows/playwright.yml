@@ -1,0 +1,118 @@
+# .github/workflows/playwright.yml — Python edition
+#
+# TARGET pipeline for the end of Week 2. On Day 1 start from the much smaller
+# example in https://playwright.dev/python/docs/ci-intro and grow toward this,
+# one feature per day. Each block is labelled with the day it's introduced.
+
+name: Playwright Tests
+
+on:
+  # Day 2 — triggers
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 18 * * *'          # 02:00 Singapore time (cron is always UTC)
+  workflow_dispatch:
+    inputs:
+      marker:
+        description: 'Only run tests with this marker, e.g. smoke or api (empty = all)'
+        required: false
+        default: ''
+
+# Day 8 — least-privilege token for every job
+permissions:
+  contents: read
+
+# Day 5 — cancel superseded runs on the same branch / PR
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Day 5 — cheap checks first, before spending minutes on browsers
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      # uv installs Python (version from .python-version) and the locked deps
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v9.0.0
+        with:
+          version: '0.13.0'
+          enable-cache: true
+      - name: Install dependencies exactly as locked
+        run: uv sync --locked
+      - name: Check tests are collectable (catches import / syntax errors)
+        run: uv run pytest --collect-only -q
+      - name: Lint workflow files
+        uses: docker://rhysd/actionlint:1.7.12
+        with:
+          args: -color
+
+  # Day 3 — one job per browser; pytest-xdist parallelises inside each job
+  test:
+    needs: lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+    env:
+      API_URL: https://api.practicesoftwaretesting.com
+      # Day 4 — credentials come from repo secrets, never from the YAML
+      TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
+      TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
+      # Day 8 — user input goes through an env var, NOT straight into `run:`
+      MARKER: ${{ inputs.marker }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v9.0.0
+        with:
+          version: '0.13.0'
+          enable-cache: true
+      - name: Install dependencies exactly as locked
+        run: uv sync --locked
+      - name: Install ${{ matrix.browser }}
+        run: uv run playwright install --with-deps ${{ matrix.browser }}
+      - name: Run tests
+        run: |
+          args=(--browser "${{ matrix.browser }}" -n 2 --reruns 1
+                --junitxml=junit.xml --html=report.html --self-contained-html)
+          if [ -n "$MARKER" ]; then args+=(-m "$MARKER"); fi
+          uv run pytest "${args[@]}"
+      # Day 4 — readable results on the run page
+      - name: Write job summary
+        if: ${{ !cancelled() }}
+        run: |
+          uv run python - <<'EOF' >> "$GITHUB_STEP_SUMMARY"
+          import os, xml.etree.ElementTree as ET
+          s = ET.parse("junit.xml").getroot()
+          s = s if s.tag == "testsuite" else s.find("testsuite")
+          t, f, e, k = (int(s.get(x, 0)) for x in ("tests", "failures", "errors", "skipped"))
+          print(f"### {os.environ['BROWSER']}: {t - f - e - k} passed, {f + e} failed, {k} skipped")
+          EOF
+        env:
+          BROWSER: ${{ matrix.browser }}
+      # Day 3 — artifacts are how files leave a job
+      - name: Upload report and traces
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: results-${{ matrix.browser }}
+          path: |
+            report.html
+            junit.xml
+            test-results/
+          retention-days: 14
+
+# Left for you to add (Week 2 stretch):
+#  - Day 6: move the setup-uv + uv sync + playwright install steps into a
+#           composite action (.github/actions/setup) and the test job into a
+#           reusable workflow (on: workflow_call)
+#  - Day 8: pin every third-party action to a full commit SHA (setup-uv
+#           already is; do the same for checkout / upload-artifact)
+#  - Day 9: add a mobile job using --device "iPhone 15" (or pytest-split for real sharding)
+#  - Day 9: publish report.html to GitHub Pages through an environment

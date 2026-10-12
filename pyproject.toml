@@ -1,14 +1,37 @@
 [project]
-name = "practice"
+name = "toolshop-playwright-python"
 version = "0.1.0"
-description = "Add your description here"
-readme = "README.md"
+description = "Learning Playwright (Python) + GitHub Actions against practicesoftwaretesting.com"
 requires-python = ">=3.12"
 dependencies = []
 
-[project.scripts]
-practice = "practice:main"
+[dependency-groups]
+# `uv sync` installs the dev group by default, so `uv sync` is all you need.
+dev = [
+    "playwright==1.63.0",
+    "pytest-playwright==0.10.0",      # page/context/browser fixtures, --browser, --tracing, --base-url
+    "pytest-xdist==3.8.0",            # parallel workers:  uv run pytest -n auto
+    "pytest-rerunfailures==16.7",     # retries:           uv run pytest --reruns 1
+    "pytest-html==4.2.0",             # HTML report:       uv run pytest --html=report.html
+    "python-dotenv==1.2.4",           # loads .env locally (CI uses repo secrets instead)
+    "axe-playwright-python==0.1.8",   # Week 2, TC14 accessibility (third party)
+]
 
-[build-system]
-requires = ["uv_build>=0.12.5,<0.13.0"]
-build-backend = "uv_build"
+[tool.uv]
+package = false   # this is a test suite, not an installable package
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+base_url = "https://practicesoftwaretesting.com"
+# Defaults for every run. CI adds --browser, -n, --reruns and report flags on top.
+addopts = [
+    "--tracing=retain-on-failure",
+    "--screenshot=only-on-failure",
+    "--video=retain-on-failure",
+    "--strict-markers",
+]
+markers = [
+    "smoke: fast checks that the site is up",
+    "e2e: longer end-to-end user journeys",
+    "api: tests that only use the REST API (no browser)",
+]
