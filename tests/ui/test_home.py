@@ -24,6 +24,5 @@ def test_search_shows_matching_products(page: Page) -> None:
 
     expect(page.get_by_test_id("search-term")).to_have_text("pliers")
     names = page.get_by_test_id("product-name")
+    expect(names.filter(has_not_text=re.compile("pliers", re.IGNORECASE))).to_have_count(0)
     expect(names.first).to_be_visible()
-    for name in names.all_text_contents():
-        assert "pliers" in name.lower(), f"unexpected result: {name!r}"
