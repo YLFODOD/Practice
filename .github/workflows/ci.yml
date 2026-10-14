@@ -1,10 +1,22 @@
-name: Smoke Test
+name: CI
 
 on:
   push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 18 * * *'
+  workflow_dispatch:
+    inputs:
+      marker:
+        description: 'Run tests with a specific marker'
+        required: false
+        default: ''
+  
 
 jobs:
-  smoke-test:
+  test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -12,9 +24,6 @@ jobs:
         uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
-        
-      - name: Setup Python
-        run: uv python install 
       
       - name: Install dependencies
         run: uv sync --locked --dev
@@ -23,4 +32,12 @@ jobs:
         run: uv run playwright install --with-deps chromium
 
       - name: Run tests
-        run: uv run pytest -m smoke
+        env:
+          MARKER: ${{ inputs.marker }}
+        run: |
+          if [ -n "${MARKER}" ]; then
+             uv run pytest -m "$MARKER"
+          else
+              uv run pytest
+          fi
+       
