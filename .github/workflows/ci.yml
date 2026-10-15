@@ -16,6 +16,10 @@ on:
 
 jobs:
   test:
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -74,7 +78,7 @@ jobs:
         run: uv sync --locked
 
       - name: Install Playwright browsers
-        run: uv run playwright install --with-deps chromium
+        run: uv run playwright install --with-deps ${{ matrix.browser }}
 
       - name: Run tests
         env:
@@ -85,9 +89,20 @@ jobs:
         run: |
           args=(--base-url http://localhost:4200)
           if [ -n "$MARKER" ]; then args+=(-m "$MARKER"); fi
-          uv run pytest "${args[@]}"
+          uv run pytest "${args[@]}" --browser "${{ matrix.browser }}" --junitxml=junit.xml --html=report.html --self-contained-html
 
       - name: Show Toolshop logs on failure
         if: failure()
         working-directory: toolshop
         run: docker compose logs --tail=100
+      
+      - name: Upload test results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: results-${{ matrix.browser }}
+          path: |
+            junit.xml
+            report.html
+            test-results
+          retention-days: 7
