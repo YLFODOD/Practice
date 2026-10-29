@@ -1,0 +1,15 @@
+from playwright.sync_api import Page
+
+
+class CartPage:
+    def __init__(self, page: Page) -> None:
+        self.page = page
+        self.cart_items = page.locator("//span[@data-test='product-title']")
+        self.checkout_button = page.get_by_test_id("proceed-1")
+
+    def open(self) -> "CartPage":
+        self.page.goto("/checkout")
+        return self
+
+    def proceed_to_checkout(self) -> None:
+        self.checkout_button.click()
