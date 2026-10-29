@@ -4,7 +4,9 @@ import os
 
 import pytest
 from dotenv import load_dotenv
-from playwright.sync_api import APIRequestContext, Playwright
+from playwright.sync_api import APIRequestContext, Page, Playwright
+from pages.home_page import HomePage
+from pages.product_page import ProductPage
 
 load_dotenv()  # reads a local .env if present; harmless in CI
 
@@ -33,3 +35,15 @@ def api(playwright: Playwright):
     context: APIRequestContext = playwright.request.new_context(base_url=API_URL)
     yield context
     context.dispose()
+
+@pytest.fixture(scope="function")
+def cart_page_with_items(page: Page) -> Page:
+    home_page = HomePage(page)
+
+    # Open the home page and add a product to the cart
+    home_page.open()
+    home_page.products.nth(0).click()
+    product_page = ProductPage(page)
+    product_page.add_to_cart()
+
+    return page

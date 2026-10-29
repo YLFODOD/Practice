@@ -14,4 +14,7 @@ class ProductPage:
         return self
 
     def add_to_cart(self) -> None:
-        self.add_to_cart_button.click()
+        with self.page.expect_response(
+            lambda r: "/carts" in r.url and r.request.method == "POST" and r.ok
+        ) as response_info:
+            self.add_to_cart_button.click()
