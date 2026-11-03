@@ -34,3 +34,7 @@ def test_invalid_login_shows_error(page: Page, email: str, password: str, error_
 
     expect(page.get_by_test_id(error_id)).to_be_visible()
     expect(page).to_have_url(re.compile(r"/auth/login"))
+
+def test_account_page(logged_in_page: Page)-> None:
+    logged_in_page.goto("/account")
+    expect(logged_in_page.get_by_test_id("nav-menu")).to_be_visible()

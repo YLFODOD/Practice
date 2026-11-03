@@ -27,6 +27,12 @@ def test_search_shows_matching_products(page: Page) -> None:
     expect(names.filter(has_not_text=re.compile("pliers", re.IGNORECASE))).to_have_count(0)
     expect(names.first).to_be_visible()
 
+
+@pytest.mark.smoke
+def test_search_no_results_shows_message(page: Page) -> None:
+    """search for a term that matches no products, check the message."""
+    page.goto("/")
     page.get_by_test_id("search-query").fill("xyz123")
     page.get_by_test_id("search-submit").click()
+
     expect(page.locator("//div[@data-test='no-results']")).to_contain_text("no products found", ignore_case=True)
