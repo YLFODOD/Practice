@@ -91,6 +91,10 @@ jobs:
           if [ -n "$MARKER" ]; then args+=(-m "$MARKER"); fi
           uv run pytest "${args[@]}" --browser "${{ matrix.browser }}" --junitxml=junit.xml --html=report.html --self-contained-html
 
+      - name: debug test user email and password
+        run: |
+          echo "TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}"
+
       - name: Show Toolshop logs on failure
         if: failure()
         working-directory: toolshop

@@ -1,11 +1,12 @@
 """Shared fixtures. pytest loads this file automatically for every test."""
 
-import os
+import os, re
 
 import pytest
 from dotenv import load_dotenv
-from playwright.sync_api import APIRequestContext, Page, Playwright
+from playwright.sync_api import APIRequestContext, Browser, Page, Playwright, expect
 from pages.home_page import HomePage
+from pages.login_page import LoginPage
 from pages.product_page import ProductPage
 
 load_dotenv()  # reads a local .env if present; harmless in CI
@@ -36,6 +37,7 @@ def api(playwright: Playwright):
     yield context
     context.dispose()
 
+
 @pytest.fixture(scope="function")
 def cart_page_with_items(page: Page) -> Page:
     home_page = HomePage(page)
@@ -47,3 +49,20 @@ def cart_page_with_items(page: Page) -> Page:
     product_page.add_to_cart()
 
     return page
+
+
+@pytest.fixture(scope="session")
+def auth_state(browser: Browser, base_url: str, credentials: dict[str, str], tmp_path_factory) -> None:
+    path = tmp_path_factory.mktemp("auth") / "state.json"
+    context = browser.new_context(base_url=base_url)
+    page = context.new_page()
+    LoginPage(page).open().login(credentials["email"], credentials["password"])
+    expect(page).to_have_url(re.compile(r"/account"))
+    context.storage_state(path=path)
+    context.close()
+    return str(path)
+
+
+@pytest.fixture
+def logged_in_page(new_context, auth_state: str) -> Page:
+    return new_context(storage_state=auth_state).new_page()
