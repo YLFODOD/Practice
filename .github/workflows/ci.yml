@@ -13,9 +13,37 @@ on:
         description: 'Only run tests with this marker, e.g. smoke (empty = all)'
         required: false
         default: ''
+        
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
+  # Fast checks first: if these fail, the slow browser jobs are skipped
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Check tests can be collected
+        run: uv run pytest --collect-only -q
+
+      - name: Lint workflow files
+        uses: docker://rhysd/actionlint:1.7.12
+        with:
+          args: -color
+
   test:
+    needs: lint
     strategy:
       fail-fast: false
       matrix:
@@ -80,6 +108,11 @@ jobs:
       - name: Install Playwright browsers
         run: uv run playwright install --with-deps ${{ matrix.browser }}
 
+      - name: Check secrets are masked (delete once you've seen ***)
+        env:
+          TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
+        run: echo "TEST_USER_EMAIL is $TEST_USER_EMAIL"
+
       - name: Run tests
         env:
           MARKER: ${{ inputs.marker }}
@@ -87,19 +120,16 @@ jobs:
           TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
           TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
         run: |
-          args=(--base-url http://localhost:4200)
+          args=(--base-url http://localhost:4200 --browser "${{ matrix.browser }}"
+                --junitxml=junit.xml --html=report.html --self-contained-html)
           if [ -n "$MARKER" ]; then args+=(-m "$MARKER"); fi
-          uv run pytest "${args[@]}" --browser "${{ matrix.browser }}" --junitxml=junit.xml --html=report.html --self-contained-html
-
-      - name: debug test user email and password
-        run: |
-          echo "TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}"
+          uv run pytest "${args[@]}"
 
       - name: Show Toolshop logs on failure
         if: failure()
         working-directory: toolshop
         run: docker compose logs --tail=100
-      
+
       - name: Upload test results
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
