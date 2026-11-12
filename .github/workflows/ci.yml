@@ -119,8 +119,8 @@ jobs:
           TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
           TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
         run: |
-          args=(--base-url http://localhost:4200 --junitxml=junit.xml --html=report.html --self-contained-html)
-          uv run pytest -m api
+          args=(-m api --junitxml=junit.xml --html=report.html --self-contained-html)
+          uv run pytest "${args[@]}"
 
       - name: Show Toolshop logs on failure
         if: failure()
