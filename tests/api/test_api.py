@@ -21,3 +21,17 @@ def test_login_returns_access_token(api: APIRequestContext, credentials: dict[st
 
     assert response.status == 200
     assert response.json().get("access_token")
+
+
+@pytest.mark.api
+def test_bad_login_returns_401(api: APIRequestContext) -> None:
+    response = api.post("/users/login", data={"username": "invalid", "password": "invalid"})
+
+    assert response.status == 401
+
+
+@pytest.mark.api
+def test_search_product_by_name(api: APIRequestContext) -> None:
+    response = api.get("/products/search", params={"q": "hammer"})
+
+    assert response.ok, f"{response.status} {response.status_text}"
