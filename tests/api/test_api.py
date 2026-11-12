@@ -35,3 +35,18 @@ def test_search_product_by_name(api: APIRequestContext) -> None:
     response = api.get("/products/search", params={"q": "hammer"})
 
     assert response.ok, f"{response.status} {response.status_text}"
+
+
+@pytest.mark.api
+def test_register_user(api: APIRequestContext) -> None:
+    response = api.post(
+        "/users/register",
+        data={
+            "first_name": "John",
+            "last_name": "Doe",
+            "email": "john5401@doe.example",
+            "password": "laseERrj23239!@@##",
+        },
+    )
+
+    assert response.status == 201

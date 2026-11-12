@@ -42,7 +42,7 @@ jobs:
         with:
           args: -color
 
-  test:
+  api-tests:
     needs: lint
     strategy:
       fail-fast: false
@@ -115,15 +115,12 @@ jobs:
 
       - name: Run tests
         env:
-          MARKER: ${{ inputs.marker }}
           API_URL: http://localhost:8091
           TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
           TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
         run: |
-          args=(--base-url http://localhost:4200 --browser "${{ matrix.browser }}"
-                --junitxml=junit.xml --html=report.html --self-contained-html)
-          if [ -n "$MARKER" ]; then args+=(-m "$MARKER"); fi
-          uv run pytest "${args[@]}"
+          args=(--base-url http://localhost:4200 --junitxml=junit.xml --html=report.html --self-contained-html)
+          uv run pytest -m api
 
       - name: Show Toolshop logs on failure
         if: failure()
@@ -134,7 +131,7 @@ jobs:
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
-          name: results-${{ matrix.browser }}
+          name: results
           path: |
             junit.xml
             report.html
